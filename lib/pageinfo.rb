@@ -1,8 +1,110 @@
 require "pageinfo/version"
+require "uri"
+require "typhoeus"
+require "nokogiri"
 
 module Pageinfo
-  def self.process(str)
-    # TODO: process `str`
-    str
+  def self.hi
+    greeting = "Hello World!"
+    puts greeting
+    greeting
+  end
+
+  def self.detect(url)
+    content = ["url", "status", "time", "title", "description", "keyword"].join(",")
+    content << "\n"
+
+    @@main_host = get_host(URI.parse(url))
+    scrapped_links = [url]
+
+    conn = Typhoeus.get(url)
+    page = Nokogiri::HTML(conn.body)
+
+    content << get_info(conn, page)
+    content << "\n"
+    links = page.css("a:not([rel]),a[rel!=nofollow]").map do |link|
+      link.attribute("href").value rescue nil
+    end
+    links.uniq!
+
+    puts "Total links founded: #{links.count}"
+    links.each do |link|
+      full_url = get_full_url(link)
+      unless full_url.nil?
+        if (scrapped_links & [full_url, "#{full_url}/", "#{full_url}/#"]).empty?
+          # No duplicate link
+          conn = Typhoeus.get(full_url)
+          page = Nokogiri::HTML(conn.body)
+          content << get_info(conn, page)
+          content << "\n"
+          scrapped_links << full_url
+        end
+      end
+    end
+
+    File.open("pageinfo.csv", "w") { |file| file.write content }
+  end
+
+  private
+  def self.get_host(uri)
+    (uri.port.eql?(443) ? "https" : "http") +
+    uri.host +
+    (uri.port.eql?(80) ? "" : ":#{uri.port}")
+  end
+
+  def self.get_info(conn, page)
+    puts conn.effective_url
+    [
+      "\"#{conn.effective_url}\"",
+      "\"#{conn.response_code}\"",
+      "\"#{conn.total_time}\"",
+      "\"#{get_head(page, "title")}\"",
+      "\"#{get_head(page, "description")}\"",
+      "\"#{get_head(page, "keywords")}\"",
+    ].join(",")
+  end
+
+  def self.get_head(page, type)
+    case type
+    when "title"
+      page.at("title").text rescue ""
+    when "description"
+      page.at("meta[name=description]").attribute("content").value rescue ""
+    when "keywords"
+      page.at("meta[name=keywords]").attribute("content").value rescue ""
+    end
+  end
+
+  def self.get_full_url(link)
+    if bad_link?(link)
+      nil
+    elsif link.match(/^\//)
+      "#{@@main_host}#{valid_link(link)}"
+    # elsif link.match(@@main_host)
+    #   link
+    else
+      link
+    end
+  end
+
+  def self.bad_link?(link)
+    [nil, "#"].include?(link) ||
+    link.match(/^javascript/) ||
+    (link.match(/^http/) && external_link?(link))
+  end
+
+  def self.external_link?(link)
+    uri = URI.parse(link)
+    !@@main_host.eql? get_host(uri)
+  end
+
+  def self.valid_link(link)
+    if link.match(/\/$/)
+      link[0..-2]
+    elsif link.match(/\/\#$/)
+      link[0..-3]
+    else
+      link
+    end
   end
 end

@@ -10,13 +10,14 @@ Gem::Specification.new do |spec|
   spec.email         = ["adit@41studio.com"]
 
   spec.summary       = %q{Browse your page meta info and optimize your SEO strategy.}
-  spec.description   = %q{pageinfo will browse through your site then list every page on your site and give detail meta info about the page.}
+  spec.description   = %q{Pageinfo will browse through your site then list every page on your site and give detail meta info about the page.}
   spec.homepage      = "https://github.com/aditiamahdar/pageinfo"
   spec.license       = "MIT"
 
   spec.files         = `git ls-files -z`.split("\x0").reject { |f| f.match(%r{^(test|spec|features)/}) }
   spec.bindir        = "exe"
   spec.executables   = spec.files.grep(%r{^exe/}) { |f| File.basename(f) }
+  # spec.executables   = ["pageinfo"]
   spec.require_paths = ["lib"]
 
   # if spec.respond_to?(:metadata)
@@ -26,4 +27,6 @@ Gem::Specification.new do |spec|
   spec.add_development_dependency "bundler", "~> 1.9"
   spec.add_development_dependency "rake", "~> 10.0"
   spec.add_development_dependency "rspec", "~> 3.2"
+  spec.add_development_dependency "typhoeus", "~> 0.7"
+  spec.add_development_dependency "nokogiri", "~> 1.6"
 end

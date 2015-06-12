@@ -25,20 +25,25 @@ module Pageinfo
     links = page.css("a:not([rel]),a[rel!=nofollow]").map do |link|
       link.attribute("href").value rescue nil
     end
-    links.uniq!
+    links.uniq!.compact!
 
     puts "Total links founded: #{links.count}"
-    links.each do |link|
-      full_url = get_full_url(link)
-      unless full_url.nil?
-        if (scrapped_links & [full_url, "#{full_url}/", "#{full_url}/#"]).empty?
-          # No duplicate link
-          conn = Typhoeus.get(full_url)
-          page = Nokogiri::HTML(conn.body)
-          content << get_info(conn, page)
-          content << "\n"
-          scrapped_links << full_url
+    while true do
+      if link = links.shift
+        full_url = get_full_url(link)
+        unless full_url.nil?
+          if (scrapped_links & [full_url, "#{full_url}/", "#{full_url}/#"]).empty?
+            puts full_url
+            # No duplicate link
+            conn = Typhoeus.get(full_url)
+            page = Nokogiri::HTML(conn.body)
+            content << get_info(conn, page)
+            content << "\n"
+            scrapped_links << full_url
+          end
         end
+      else
+        break;
       end
     end
 
@@ -46,65 +51,64 @@ module Pageinfo
   end
 
   private
-  def self.get_host(uri)
-    (uri.port.eql?(443) ? "https" : "http") +
-    uri.host +
-    (uri.port.eql?(80) ? "" : ":#{uri.port}")
-  end
-
-  def self.get_info(conn, page)
-    puts conn.effective_url
-    [
-      "\"#{conn.effective_url}\"",
-      "\"#{conn.response_code}\"",
-      "\"#{conn.total_time}\"",
-      "\"#{get_head(page, "title")}\"",
-      "\"#{get_head(page, "description")}\"",
-      "\"#{get_head(page, "keywords")}\"",
-    ].join(",")
-  end
-
-  def self.get_head(page, type)
-    case type
-    when "title"
-      page.at("title").text rescue ""
-    when "description"
-      page.at("meta[name=description]").attribute("content").value rescue ""
-    when "keywords"
-      page.at("meta[name=keywords]").attribute("content").value rescue ""
+    def self.get_host(uri)
+      (uri.port.eql?(443) ? "https://" : "http://") +
+      uri.host +
+      (uri.port.eql?(80) ? "" : ":#{uri.port}")
     end
-  end
 
-  def self.get_full_url(link)
-    if bad_link?(link)
-      nil
-    elsif link.match(/^\//)
-      "#{@@main_host}#{valid_link(link)}"
-    # elsif link.match(@@main_host)
-    #   link
-    else
-      link
+    def self.get_info(conn, page)
+      [
+        "\"#{conn.effective_url}\"",
+        "\"#{conn.response_code}\"",
+        "\"#{conn.total_time}\"",
+        "\"#{get_head(page, "title")}\"",
+        "\"#{get_head(page, "description")}\"",
+        "\"#{get_head(page, "keywords")}\"",
+      ].join(",")
     end
-  end
 
-  def self.bad_link?(link)
-    [nil, "#"].include?(link) ||
-    link.match(/^javascript/) ||
-    (link.match(/^http/) && external_link?(link))
-  end
-
-  def self.external_link?(link)
-    uri = URI.parse(link)
-    !@@main_host.eql? get_host(uri)
-  end
-
-  def self.valid_link(link)
-    if link.match(/\/$/)
-      link[0..-2]
-    elsif link.match(/\/\#$/)
-      link[0..-3]
-    else
-      link
+    def self.get_head(page, type)
+      case type
+      when "title"
+        page.at("title").text.strip rescue ""
+      when "description"
+        page.at("meta[name=description]").attribute("content").value.strip rescue ""
+      when "keywords"
+        page.at("meta[name=keywords]").attribute("content").value.strip rescue ""
+      end
     end
-  end
+
+    def self.get_full_url(link)
+      if bad_link?(link)
+        nil
+      elsif link.match(/^\//)
+        "#{@@main_host}#{valid_link(link)}"
+      elsif link.match(@@main_host)
+        valid_link(link)
+      else
+        "#{@@main_host}/#{link}"
+      end
+    end
+
+    def self.bad_link?(link)
+      [nil, "#"].include?(link) ||
+      link.match(/^javascript/) ||
+      (link.match(/^http/) && external_link?(link))
+    end
+
+    def self.external_link?(link)
+      uri = URI.parse(link)
+      !@@main_host.eql? get_host(uri)
+    end
+
+    def self.valid_link(link)
+      if link.match(/\/$/)
+        link[0..-2]
+      elsif link.match(/\/\#$/)
+        link[0..-3]
+      else
+        link
+      end
+    end
 end

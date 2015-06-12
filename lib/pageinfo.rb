@@ -4,12 +4,6 @@ require "typhoeus"
 require "nokogiri"
 
 module Pageinfo
-  def self.hi
-    greeting = "Hello World!"
-    puts greeting
-    greeting
-  end
-
   def self.detect(url)
     content = ["url", "status", "time", "title", "description", "keyword"].join(",")
     content << new_line
@@ -25,14 +19,11 @@ module Pageinfo
     content << new_line
 
     @links = get_page_links(page)
-    # puts "Homepage links: #{@links.count}"
     while true do
-      # puts "Links: #{@links.count} left"
       if link = @links.shift
         full_url = get_full_url(link)
         unless full_url.nil?
           if (scrapped_urls & [full_url, "#{full_url}/", "#{full_url}/#"]).empty?
-            # No duplicate link
             conn = Typhoeus.get(full_url)
             page = Nokogiri::HTML(conn.body)
             content << get_info(conn, page)
@@ -45,7 +36,6 @@ module Pageinfo
             new_links = new_links - @links
             new_links = new_links - scrapped_links
             @links = @links + new_links unless new_links.empty?
-            # puts "Links: #{@links.count} left, #{new_links.count} new links"
           end
         end
       else

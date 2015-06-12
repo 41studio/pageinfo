@@ -25,8 +25,9 @@ module Pageinfo
     content << new_line
 
     @links = get_page_links(page)
-    puts "Homepage links: #{@links.count}"
+    # puts "Homepage links: #{@links.count}"
     while true do
+      # puts "Links: #{@links.count} left"
       if link = @links.shift
         full_url = get_full_url(link)
         unless full_url.nil?
@@ -44,7 +45,7 @@ module Pageinfo
             new_links = new_links - @links
             new_links = new_links - scrapped_links
             @links = @links + new_links unless new_links.empty?
-            puts "Links: #{@links.count} left, #{new_links.count} new links"
+            # puts "Links: #{@links.count} left, #{new_links.count} new links"
           end
         end
       else

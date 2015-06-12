@@ -1,0 +1,4 @@
+#!/usr/bin/env ruby
+
+require 'pageinfo'
+Pageinfo.detect ARGV[0]

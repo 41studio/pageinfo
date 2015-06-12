@@ -12,34 +12,39 @@ module Pageinfo
 
   def self.detect(url)
     content = ["url", "status", "time", "title", "description", "keyword"].join(",")
-    content << "\n"
+    content << new_line
 
+    @@no = 0
     @@main_host = get_host(URI.parse(url))
-    scrapped_links = [url]
+    scrapped_links, scrapped_urls = [url], [url]
 
     conn = Typhoeus.get(url)
     page = Nokogiri::HTML(conn.body)
 
     content << get_info(conn, page)
-    content << "\n"
-    links = page.css("a:not([rel]),a[rel!=nofollow]").map do |link|
-      link.attribute("href").value rescue nil
-    end
-    links.uniq!.compact!
+    content << new_line
 
-    puts "Total links founded: #{links.count}"
+    @links = get_page_links(page)
+    puts "Homepage links: #{@links.count}"
     while true do
-      if link = links.shift
+      if link = @links.shift
         full_url = get_full_url(link)
         unless full_url.nil?
-          if (scrapped_links & [full_url, "#{full_url}/", "#{full_url}/#"]).empty?
-            puts full_url
+          if (scrapped_urls & [full_url, "#{full_url}/", "#{full_url}/#"]).empty?
             # No duplicate link
             conn = Typhoeus.get(full_url)
             page = Nokogiri::HTML(conn.body)
             content << get_info(conn, page)
-            content << "\n"
-            scrapped_links << full_url
+            content << new_line
+
+            scrapped_links << link
+            scrapped_urls << full_url
+
+            new_links = get_page_links(page)
+            new_links = new_links - @links
+            new_links = new_links - scrapped_links
+            @links = @links + new_links unless new_links.empty?
+            puts "Links: #{@links.count} left, #{new_links.count} new links"
           end
         end
       else
@@ -51,6 +56,10 @@ module Pageinfo
   end
 
   private
+    def self.new_line
+      "\n"
+    end
+
     def self.get_host(uri)
       (uri.port.eql?(443) ? "https://" : "http://") +
       uri.host +
@@ -58,6 +67,8 @@ module Pageinfo
     end
 
     def self.get_info(conn, page)
+      @@no = @@no.next
+      puts "#{@@no}. #{conn.effective_url}"
       [
         "\"#{conn.effective_url}\"",
         "\"#{conn.response_code}\"",
@@ -98,8 +109,8 @@ module Pageinfo
     end
 
     def self.external_link?(link)
-      uri = URI.parse(link)
-      !@@main_host.eql? get_host(uri)
+      uri = URI.parse(link) rescue nil
+      uri.nil? ? true : !@@main_host.eql?(get_host(uri))
     end
 
     def self.valid_link(link)
@@ -110,5 +121,12 @@ module Pageinfo
       else
         link
       end
+    end
+
+    def self.get_page_links(page)
+      links = page.css("a:not([rel]),a[rel!=nofollow]").map do |link|
+        link.attribute("href").value rescue nil
+      end
+      links.uniq.compact
     end
 end

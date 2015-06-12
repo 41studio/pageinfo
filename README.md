@@ -1,5 +1,7 @@
 # Pageinfo
 
+[![Gem Version](https://badge.fury.io/rb/meta-tags.svg)](http://badge.fury.io/rb/meta-tags)
+
 Pageinfo will browse through your site then list every page on your site and give detail meta info about the page.
 
 ## Installation

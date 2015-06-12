@@ -22,7 +22,7 @@ Or install it yourself as:
 
 Browse your site using:
 
-    $ pageinfo "http://www.yoursite.com"
+    $ pageinfo "http://localhost:3000"
 
 ## Development
 

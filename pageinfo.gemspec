@@ -10,7 +10,7 @@ Gem::Specification.new do |spec|
   spec.email         = ["adit@41studio.com"]
 
   spec.summary       = %q{Browse your page meta info and optimize your SEO strategy.}
-  spec.description   = %q{Pageinfo will browse through your site then list every page on your site and give detail meta info about the page.}
+  spec.description   = %q{Page Info gem will browse through your site then list every page on your site and give detail meta info about the page.}
   spec.homepage      = "https://github.com/aditiamahdar/pageinfo"
   spec.license       = "MIT"
 
